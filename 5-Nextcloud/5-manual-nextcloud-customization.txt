@@ -1,0 +1,239 @@
+# This one isn't a script. We need to manually do things and copy and paste commands
+
+
+# Next we need to grab the config file
+# Run these commands
+
+
+POD_NAME=$(/usr/local/bin/kubectl get pods -n nextcloud -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -it $POD_NAME -n nextcloud -- /bin/bash -c 'cat /var/www/html/config/config.php'
+
+#Copy and paste this config file to a text editor. We'll need this later
+# Then in that text file, add this line underneath the existing trusted domains section
+# before   # 'trusted_domains' =>
+     #array (
+     # 0 => 'localhost',
+     #1 => 'nextcloud.kube.home',
+
+#after
+    0 => 'localhost',
+    1 => 'nextcloud.kube.home',
+    2 => 'nextcloud.ne-inc.com',
+ 
+
+# Save this text file. We'll need it later
+
+
+
+# to get persistent storage, we'll need to do this
+
+ kubectl delete deployment nextcloud -n nextcloud
+
+
+nano nextcloud-deployment.yaml
+
+
+# then copy and paste the contents of the nextcloud-deployment.yaml file and save
+# we'll deploy this last
+
+# After persistent storage is added, we'll need to modify the permissions of the config file to get it working again
+
+kubectl cp config.php $POD_NAME:/var/www/html/config/config.php -n nextcloud
+
+kubectl exec -it $POD_NAME -n nextcloud -- /bin/bash -c 'chown -R www-data:www-data /var/www/html/config/config.php'
+kubectl exec -it $POD_NAME -n nextcloud -- /bin/bash -c 'chmod -R 755 /var/www/html/config/config.php'
+
+
+
+
+
+# next we need to get the contents of the nextcloud-config folder copied over to our admin Linux machine
+# assuming the computer your on is windows, use WinSCP to copy onto the target Linux machine into the home directory
+# note to authenticate with an ssh key, you'll first need to convert it using a component of putty called puttygen, then save the raw text to a .ppk file
+
+# Configure WinSCP for SSH key authentication:
+
+# Open WinSCP and create a new session or open an existing one.
+# Under Host name, enter the IP address or domain of the remote machine.
+# Set File protocol to SFTP (for SSH file transfers).
+# Under User name, enter the username you use to log in on the remote server.
+# Click on Advanced to open the advanced settings.
+# In the Advanced Site Settings window, go to SSH > Authentication.
+
+# once authenticated, then copy nextcloud-config folder over onto the target Linux machine into the home directory
+
+
+# After the copy then we need to cd into that nextcloud-config directory
+# then nano config.php and paste the contents of that config file we saved earlier into this file and hit save.
+# then cd .. back to your home directory
+
+
+# Next we need to make a new home for this config folder for the nextcloud deployment
+
+nano nextcloud-config-pvc.yaml
+
+
+#### Step 1: Create a New PVC for `config`
+
+You can create a new PVC just for the `config` directory, separate from the `data` PVC.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nextcloud-config-pvc
+  namespace: nextcloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Mi  # This can be a smaller size since it's just for config data
+  storageClassName: longhorn
+
+
+
+
+Save this as `nextcloud-config-pvc.yaml` and apply it:
+
+
+kubectl apply -f nextcloud-config-pvc.yaml
+
+
+
+
+#### Step 2: Update the Temporary Pod to Mount Both PVCs
+
+
+nano nextcloud-config-temp.yaml
+
+Now, update the temporary pod definition to mount the `nextcloud-config-pvc` at `/var/www/html/config` and the existing `nextcloud-longhorn-pvc` at `/var/www/html/data`. Here’s the updated YAML:
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nextcloud-config-temp
+  namespace: nextcloud
+spec:
+  containers:
+    - name: nextcloud-config-temp
+      image: busybox
+      command: ['sleep', 'infinity']  # Keep the pod running
+      volumeMounts:
+        - name: nextcloud-data
+          mountPath: /var/www/html/data
+        - name: nextcloud-config
+          mountPath: /var/www/html/config
+  volumes:
+    - name: nextcloud-data
+      persistentVolumeClaim:
+        claimName: nextcloud-longhorn-pvc
+    - name: nextcloud-config
+      persistentVolumeClaim:
+        claimName: nextcloud-config-pvc
+
+
+#### Step 3: Apply the Updated Temporary Pod YAML
+
+Now apply the updated pod definition:
+
+
+kubectl apply -f nextcloud-config-temp.yaml
+
+
+This should allow the pod to mount the two different PVCs without the conflict that occurs when trying to mount both directories to a single PVC.
+
+#### Step 4: Copy the `config.php` File
+
+
+kubectl get pods -n nextcloud
+
+# Once the pod is running, use `kubectl cp` or `kubectl exec` to copy the `config.php` file into the `/var/www/html/config` directory in the new PVC:
+# Copy the contents of the nextcloud-config folder
+
+
+kubectl cp ./nextcloud-config/. nextcloud-config-temp:/var/www/html/config/ -n nextcloud
+
+
+
+
+
+#This command just copies the 1 file, which we want the whole config folder instead 
+##kubectl cp config.php nextcloud-config-temp:/var/www/html/config/config.php -n nextcloud
+
+#Double check the files are there with this
+
+
+kubectl exec -it nextcloud-config-temp -n nextcloud -- ls /var/www/html/config
+
+kubectl exec -it nextcloud-config-temp -n nextcloud -- /bin/bash
+cd config
+chown -R www-data:www-data config.php
+
+#### Step 5: Clean Up the Temporary Pod
+
+Once the `config.php` file is in place, delete the temporary pod:
+
+
+kubectl delete pod nextcloud-config-temp -n nextcloud
+
+
+#### Step 6: Redeploy the Nextcloud Deployment
+
+Finally, redeploy the Nextcloud deployment using your updated `nextcloud-deployment.yaml` file, and it should now use the PVCs with the correct configuration.
+
+
+kubectl apply -f nextcloud-deployment.yaml
+
+
+# Wait for the pod to come online. It may be about 2 minutes before web ui is available
+kubectl get pods -n nextcloud
+
+
+# When the webui comes up, we may run into some issues with the database having permissions. 
+# This is a relatively simple fix. Run these 4 commands.
+
+POD_NAME=$(/usr/local/bin/kubectl get pods -n nextcloud -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -it $POD_NAME -n nextcloud -- /bin/bash -c 'chmod 0770 /var/www/html/data
+kubectl exec -it $POD_NAME -n nextcloud -- /bin/bash -c 'chown -R www-data:www-data /var/www/html/data'
+kubectl exec -it $POD_NAME -n nextcloud -- /bin/bash -c 'chmod g-s /var/www/html/data'
+
+
+# Now we should be able to refresh the page and see the login page
+# Nextcloud should now be usable.
+# The default username is admin and default password is changeme
+
+
+# It's not https yet but we can work on that at a later time in a separate document as that is primarily configuration in k3s
+
+
+####### YOU DID IT!!!! #############
+
+
+
+
+# A couple other things to consider. This uses an SQLite database which is limited in its concurrency. To make this more robust for production PostgreSQL is recommended
+
+# This takes some manipulation but it is doable. 
+
+# We'll need to put the configuration into a setup where the database location is persistent but the config file is not
+
+# The deployment called semi-persistent-nextcloud-deployment.yaml in the other subfolder does just that
+
+
+# then apply this
+ kubectl delete deployment nextcloud -n nextcloud
+ kubectl apply -f semi-persistent-nextcloud-deployment.yaml
+
+
+# then check for pods with 
+ kubectl get pods -n nextcloud
+
+# To fix the "Trusted domain" issue we'll need to run this script from the admin machine script-that-fixes-nextcloud.sh
+# make sure you chmod -x script-that-fixes-nextcloud.sh to make it executable
+
+# Now the problem with this is we'll have a new config file we'll need to deal with which requires us to start back at the beginning of this document 5.
+
+
+
+

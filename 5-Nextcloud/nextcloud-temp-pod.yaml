@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nextcloud-temp-pod
+  namespace: nextcloud
+spec:
+  containers:
+  - name: nextcloud-temp-container
+    image: busybox:1.35.0-uclibc
+    command: [ "sleep", "3600" ]  # This will keep the pod running for 1 hour
+    volumeMounts:
+    - mountPath: /var/www/html/config
+      name: nextcloud-config
+    - mountPath: /var/www/html/data
+      name: nextcloud-data
+  volumes:
+  - name: nextcloud-config
+    persistentVolumeClaim:
+      claimName: nextcloud-config-pvc
+  - name: nextcloud-data
+    persistentVolumeClaim:
+      claimName: nextcloud-data-pvc
