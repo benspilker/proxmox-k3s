@@ -4,7 +4,10 @@
 
 # Optional, define credentials that were made in script step 1A.3, otherwise you'll have to manually enter the password for ubuntuprox
 # Re-enter that password here
-# PASSWORD=<your-new-password-from-step-1A.3>
+
+PASSWORD=<your-new-password-from-step-1A.3>
+echo "$PASSWORD" | sudo -S hostname
+
 
 # NOTE YOU NEED TO SET IPs and gateway accordingly for all VMs
 # Otherwise make them DHCP and make reservations on DHCP server

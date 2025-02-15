@@ -17,7 +17,7 @@ useradd -m -s /bin/bash ubuntuprox
 usermod -aG sudo ubuntuprox
 
 # Step 1A.3 Set a password for new user
-echo "ubuntuprox:<your-new-user-password-here>" | chpasswd
+echo "ubuntuprox:<your-new-password-from-step-1A.3>" | chpasswd
 
 # Step 1A.4 switch user to ubuntuprox
 su - ubuntuprox

@@ -25,13 +25,15 @@ echo -e " \033[32;5m                                                           \
 # YOU SHOULD ONLY NEED TO EDIT THIS SECTION #
 #############################################
 
+# Step 3.0A Defining variables
+
 # Version of Kube-VIP to deploy
 KVVERSION="v0.6.3"
 
 # K3S Version
 k3sVersion="v1.26.10+k3s2"
 
-# Set the IP addresses of the master and worker nodes
+# Set the IP addresses of the master and worker nodes (using the same IPs from Script 2B)
 master1=192.168.100.76
 master2=192.168.100.92
 master3=192.168.100.93
@@ -76,6 +78,8 @@ config_file=~/.ssh/config
 
 #############################################
 
+# Step 3.0B prep admin machine before installation
+
 # Move SSH certs to ~/.ssh and change permissions
 cp /home/$user/{$certName,$certName.pub} /home/$user/.ssh
 chmod 600 /home/$user/.ssh/$certName 
@@ -101,7 +105,7 @@ else
     echo -e " \033[32;5mKubectl already installed\033[0m"
 fi
 
-# Check for SSH config file, create if needed, add/change Strict Host Key Checking (don't use in production!)
+# Step 3.0C Check for SSH config file, create if needed, add/change Strict Host Key Checking (don't use in production!)
 
 if [ ! -f "$config_file" ]; then
   # Create the file and add the line
@@ -127,7 +131,7 @@ else
   fi
 fi
 
-#add ssh keys for all nodes
+# Step 3.0D Prep nodes by adding ssh keys for all nodes
 for node in "${all[@]}"; do
   ssh-copy-id $user@$node
 done
@@ -141,7 +145,7 @@ EOF
   echo -e " \033[32;5mPolicyCoreUtils installed!\033[0m"
 done
 
-# Step 1: Bootstrap First k3s Node
+# Step 3.1 install, Bootstrap First k3s Node
 mkdir ~/.kube
 k3sup install \
   --ip $master1 \
@@ -159,24 +163,24 @@ echo -e "First Node bootstrapped successfully"
 
 
 curl https://kube-vip.io/manifests/rbac.yaml  > /$HOME/rbac.yaml
-# Step 2: Install Kube-VIP for HA
+# Step 3.2: Install Kube-VIP for HA
 kubectl apply -f https://kube-vip.io/manifests/rbac.yaml --validate=false
 
-# Step 3: Download kube-vip
+# Step 3.3: Download kube-vip
 curl -sO https://raw.githubusercontent.com/JamesTurland/JimsGarage/main/Kubernetes/K3S-Deploy/kube-vip
 cat kube-vip | sed 's/$interface/'$interface'/g; s/$vip/'$vip'/g' > $HOME/kube-vip.yaml
 
-# Step 4: Copy kube-vip.yaml to master1
+# Step 3.4: Copy kube-vip.yaml to master1
 scp -i ~/.ssh/$certName $HOME/kube-vip.yaml $user@$master1:~/kube-vip.yaml
 
 
-# Step 5: Connect to Master1 and move kube-vip.yaml
+# Step 3.5: Connect to Master1 and move kube-vip.yaml
 ssh $user@$master1 -i ~/.ssh/$certName <<- EOF
   sudo mkdir -p /var/lib/rancher/k3s/server/manifests
   sudo mv kube-vip.yaml /var/lib/rancher/k3s/server/manifests/kube-vip.yaml
 EOF
 
-# Step 6: Add new master nodes (servers) & workers
+# Step 3.6A: Add new master nodes (servers) & workers
 for newnode in "${masters[@]}"; do
   k3sup join \
     --ip $newnode \
@@ -191,7 +195,7 @@ for newnode in "${masters[@]}"; do
   echo -e " \033[32;5mMaster node joined successfully!\033[0m"
 done
 
-# add workers1
+# Step 3.6B add workers1
 for newagent in "${workers1[@]}"; do
   k3sup join \
     --ip $newagent \
@@ -204,7 +208,7 @@ for newagent in "${workers1[@]}"; do
   echo -e " \033[32;5mAgent node joined successfully!\033[0m"
 done
 
-# add worker2
+# Step 3.6C add workers2
 for newagent in "${workers2[@]}"; do
   k3sup join \
     --ip $newagent \
@@ -218,18 +222,19 @@ for newagent in "${workers2[@]}"; do
 done
 
 curl https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml  > /$HOME/kube-vip-cloud-controller.yaml
-# Step 7: Install kube-vip as network LoadBalancer - Install the kube-vip Cloud Provider
+# Step 3.7: Install kube-vip as network LoadBalancer - Install the kube-vip Cloud Provider
 kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
 
-# Step 8: Install Metallb
+# Step 3.8: Install Metallb
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/namespace.yaml
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
+
 # Download ipAddressPool and configure using lbrange above
 curl -sO https://raw.githubusercontent.com/JamesTurland/JimsGarage/main/Kubernetes/K3S-Deploy/ipAddressPool
 cat ipAddressPool | sed 's/$lbrange/'$lbrange'/g' > $HOME/ipAddressPool.yaml
 kubectl apply -f $HOME/ipAddressPool.yaml
 
-# Step 9: Test with Nginx
+# Step 3.9: Test with Nginx
 kubectl apply -f https://raw.githubusercontent.com/inlets/inlets-operator/master/contrib/nginx-sample-deployment.yaml -n default
 kubectl expose deployment nginx-1 --port=80 --type=LoadBalancer -n default
 
@@ -239,7 +244,7 @@ while [[ $(kubectl get pods -l app=nginx -o 'jsonpath={..status.conditions[?(@.t
    sleep 1
 done
 
-# Step 10: Deploy IP Pools and l2Advertisement
+# Step 3.10: Deploy IP Pools and l2Advertisement
 kubectl wait --namespace metallb-system \
                 --for=condition=ready pod \
                 --selector=component=controller \
