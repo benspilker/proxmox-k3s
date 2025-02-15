@@ -1,3 +1,4 @@
+#!/bin/bash
 
 ########## Rancher UI Install ##########
 
