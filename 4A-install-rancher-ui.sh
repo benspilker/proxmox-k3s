@@ -2,20 +2,22 @@
 
 ########## Rancher UI Install ##########
 
-# Step 4.0 switch user to ubuntuprox and log in as admin machine (if you haven't already)
-su - ubuntuprox
 
-ssh -i id_rsa ubuntu@192.168.100.6
-
-# Define a domain name for your rancher instance
+# Define a domain name for your rancher instance suffix, ie rancher.example.com or rancher.example.local
 # This does not have to be a publicly facing fqdn.
-# In my case I have a local fqdn with on-premise dns for a .com local suffix domain
+# In my case I have a local fqdn with on-premise DNS for a .com local suffix domain
 # This is not crucial for rancher install as it will be accessed via loadbalancer IP.
 # However, in later steps when installing instances within a k3s cluster such as nextcloud, having a resolvable domain name is crucial
 
 DOMAINNAME = "ne-inc.com"
 
 # Step 4.1 Note all of these commands should be done from the admin machine
+
+# SSH To the admin VM first
+# Note the IP of the admin machine
+ADMIN_VM_IP="192.168.100.6"
+
+ssh -i id_rsa ubuntu@$ADMIN_VM_IP
 
 #Helm Install
 

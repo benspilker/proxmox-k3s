@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# SSH To the admin VM first
+# Note the IP of the admin machine
+ADMIN_VM_IP="192.168.100.6"
+
+ssh -i id_rsa ubuntu@$ADMIN_VM_IP
+
+
 # Courtesy of James Turland
 # https://github.com/JamesTurland/JimsGarage/blob/main/Kubernetes/K3S-Deploy/k3s.sh
 # https://github.com/JamesTurland
