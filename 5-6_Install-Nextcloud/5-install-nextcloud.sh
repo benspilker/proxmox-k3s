@@ -2,7 +2,6 @@
 
 ########## Nextcloud Instance Install ###########
 
-
 # Step 5.0 Commit to a resolvable local (or external) domain name
 
 # Define a domain name for your soon to be nextcloud instance suffix, ie nextcloud.example.com  or nextcloud.example.local
@@ -25,8 +24,6 @@ ADMIN_VM_IP="192.168.100.6"
 
 ssh -i id_rsa ubuntu@$ADMIN_VM_IP
 
-
-
 kubectl create namespace nextcloud
 helm repo add nextcloud https://nextcloud.github.io/helm/
 helm repo update
@@ -37,7 +34,6 @@ export APP_HOST=127.0.0.1
 export APP_PASSWORD=$(kubectl get secret --namespace nextcloud nextcloud -o jsonpath="{.data.nextcloud-password}" | base64 --decode)
 
 kubectl get svc nextcloud -n nextcloud
-
 
 # Step 5.2 Make self-signed certificate
 
@@ -135,5 +131,5 @@ kubectl cp $POD_NAME:/var/www/html/config -n nextcloud ~/nextcloud-config
 #Saving the original deployment file for safe keeping
 kubectl get deployment nextcloud -n nextcloud -o yaml > nextcloud-deployment-original.yaml
 
-# Next move on to the next script.
+# Next move on to the next script #6 for persistent storage
 
