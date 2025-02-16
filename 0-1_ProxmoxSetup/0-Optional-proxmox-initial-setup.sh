@@ -5,7 +5,7 @@
 # Open the shell, copy and paste this into the shell
 # NOTE ONLY RUN THIS IF YOU FIRST INSTALLED PROXMOX AND LEFT UNALLOCATED SPACE
 
-# Step 1 (Assuming Proxmox v8.x was already installed)
+# Step 0.1 (Assuming Proxmox v8.x was already installed)
 # create usable thick provisioned proxmox logical volume (LVM)
 
 # The disk to work with (e.g., /dev/sda)
@@ -14,36 +14,36 @@ PARTITION="${DISK}4"
 VOLUME_GROUP="LVM-Thick"  # Volume Group name
 LV_NAME="lv"             # Logical Volume name
 
-# Step 1A: Create a new partition (using unallocated space) on the disk
+# Step 0.1A: Create a new partition (using unallocated space) on the disk
 echo -e "n\n\n\n\n\nw" | fdisk $DISK
 
-# Step 1B: Change the partition type to Linux LVM (type 43)
+# Step 0.1B: Change the partition type to Linux LVM (type 43)
 echo -e "t\n4\n43\nw" | fdisk $DISK
 
-# Step 1C: Create a Volume Group (VG) with the new partition
+# Step 0.1C: Create a Volume Group (VG) with the new partition
 vgcreate $VOLUME_GROUP $PARTITION
 
-# Step 1D: Verify the volume group creation
+# Step 0.1D: Verify the volume group creation
 vgs
 
-# Step 1E: Backup the storage.cfg before making changes
+# Step 0.1E: Backup the storage.cfg before making changes
 STORAGE_CFG="/etc/pve/storage.cfg"
 cp $STORAGE_CFG $STORAGE_CFG.bak
 
-# Step 1F: Add the LVM storage configuration entry to the storage.cfg
+# Step 0.1F: Add the LVM storage configuration entry to the storage.cfg
 echo -e "\nlvm: $VOLUME_GROUP\n    vgname $VOLUME_GROUP\n    content images,rootdir\n    disable 0" >> $STORAGE_CFG
 
-# Step 1G: Check the storage.cfg file to ensure proper formatting
+# Step 0.1G: Check the storage.cfg file to ensure proper formatting
 cat $STORAGE_CFG | grep -A 5 $VOLUME_GROUP
 
-# Step 1H: Reload the storage configuration to ensure Proxmox picks it up
+# Step 0.1H: Reload the storage configuration to ensure Proxmox picks it up
 pvesh get /nodes/$(hostname)/storage
 
-# Step 1I: Confirm if LVM is now listed as a storage option
+# Step 0.1I: Confirm if LVM is now listed as a storage option
 pvesh get /nodes/$(hostname)/storage | grep $VOLUME_GROUP
 
 
-# Step 2, Additionally we can add the non-subscription repository and update
+# Step 0.2, Additionally we can add the non-subscription repository and update
 
 # New content to write to the file
 cat <<EOF > /etc/apt/sources.list
