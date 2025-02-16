@@ -2,7 +2,7 @@
 
 This guide outlines the steps to configure a Proxmox server for running a K3s Kubernetes cluster. It covers setting up Proxmox, preparing VMs, installing K3s, deploying Rancher, Installation of Nextcloud, and setting up Nextcloud with persistent storage.
 
-Here’s a visual representation of how K3s works:
+Here is a visual representation of how K3s works:
 
 <img src="https://k3s.io/img/how-it-works-k3s-revised.svg" width="400" />
 
@@ -17,7 +17,6 @@ Here’s a visual representation of how K3s works:
 6. [Step 4: Install Rancher UI and Tools](#step-4-install-rancher-ui-and-tools)
 7. [Step 5: Install Nextcloud Instance](#step-5-install-nextcloud-instance)
 8. [Step 6: Persistent Volume Storage for Nextcloud](#step-6-persistent-volume-storage-for-nextcloud)
-
 
 ---
 
@@ -88,3 +87,41 @@ This step is optional and assumes Proxmox is already installed. It involves sett
 ---
 
 This completes the setup for Nextcloud with persistent storage and a fully functioning K3s cluster on Proxmox.
+
+Proxmox K3s Setup Guide Summary
+├── Step 0: Optional Initial Proxmox Setup
+│   ├── Create LVM
+│   ├── Backup Proxmox Configuration
+│   ├── Add LVM Storage
+│   └── Upgrade Proxmox
+├── Step 1: Prepare Proxmox Instance for K3s
+│   ├── Create a New User
+│   └── Set Up SSH
+├── Step 2: Prepare Proxmox for K3s Cluster
+│   ├── Create VM Template
+│   ├── Create VMs for K3s Cluster
+│   └── Copy SSH Keys
+├── Step 3: Installing K3s on Nodes
+│   ├── Define Cluster Variables
+│   ├── Prepare Admin Machine
+│   ├── Bootstrap First K3s Node
+│   ├── Install Kube-VIP for High Availability
+│   ├── Join Additional Nodes
+│   └── Install MetalLB
+├── Step 4: Install Rancher UI and Tools
+│   ├── Install Helm
+│   ├── Add Rancher Helm Repo
+│   ├── Install Cert Manager
+│   ├── Install Rancher
+│   └── Install Longhorn and Traefik
+├── Step 5: Install Nextcloud Instance
+│   ├── Install Nextcloud
+│   ├── Create Self-Signed Certificate
+│   ├── Define Ingress
+│   └── Resolve Domain
+└── Step 6: Persistent Volume Storage for Nextcloud
+    ├── Delete Current Nextcloud Deployment
+    ├── Create Persistent Volume Claims
+    ├── Copy Configuration to Persistent Volume
+    ├── Deploy Nextcloud with Persistent Storage
+    └── Set Permissions
